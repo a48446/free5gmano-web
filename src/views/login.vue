@@ -57,6 +57,14 @@
         >
           登入
         </button>
+
+        <button
+          class="w-100 btn btn-secondary btn-lg text-white mb-3"
+          @click="otherlogin"
+        >
+          其他登入方式
+        </button>
+
         <router-link class="text-decoration-none" to="/"
           >忘記密碼 ?</router-link
         >
@@ -68,6 +76,9 @@
         >
           建立新帳號
         </button>
+
+
+
       </div>
     </div>
   </div>
@@ -94,6 +105,13 @@ const b = () => {
     path: "/dashboard",
   });
 };
+
+const otherlogin = () => {
+  router.push({
+    path: "/login2",
+  });
+}
+
 const loginButton = () => {
   const form = {
     name: name.value,
