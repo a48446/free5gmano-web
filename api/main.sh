@@ -1,0 +1,1 @@
+sudo FLASK_ENV=development FLASK_APP=free5gmano.py venv/bin/flask run -h localhost
