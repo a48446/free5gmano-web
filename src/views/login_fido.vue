@@ -48,6 +48,7 @@
         <button class="w-100 btn btn-primary btn-lg text-white mb-3" id="btnRegister" @click="register">
           註冊
         </button>
+        
         <div class="hr_custom"></div>
 
         <button class="w-100 btn btn-secondary btn-lg text-white mb-3" id="btnRegister" @click="backLogin">
@@ -62,7 +63,9 @@
 <script setup>
 import { ref, defineAsyncComponent } from "vue";
 import { useRouter } from "vue-router";
-import { authenticate } from "../static/script";
+import { registerFido, authenticate } from "../static/script";
+import { api } from "../apis/api";
+
 const ModalRegister = defineAsyncComponent(() =>
   import(
     /* webpackChunkName: "ModalRegister" */ "@/components/global/modal-register.vue"
@@ -70,9 +73,13 @@ const ModalRegister = defineAsyncComponent(() =>
 );
 const router = useRouter();
 const username = ref("");
+const login_validate = ref(false);
+const msg = ref();
+
 // const pwd = ref("");
 // const login_validate = ref(false);
-const msg = ref();
+
+
 const b = () => {
   console.log(process.env.VUE_APP_BASE_URL_proxyGovd == "/govd");
   router.push({
@@ -80,8 +87,39 @@ const b = () => {
   });
 };
 
-const register = () => {
-  router.push("/register");
+const  register = async () => {
+  if (username.value == "") {
+    alert("請輸入帳號");
+    return;
+  } else {
+    await registerFido(username.value);
+    router.push('/login2')
+  }
+};
+
+const login = () => {
+  const form = {
+    name: 'admin',
+    password: '123',
+  };
+  api
+    .loadAuth()
+    .login(form)
+    .then((res) => {
+      console.log(res.data);
+      if (res.data.status === 0) {
+        router.push({
+          path: "/dashboard",
+        });
+      } else {
+        login_validate.value = true;
+        msg.value = res.data.message
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+    
 };
 
 const authenticate111 = async () => {
@@ -90,7 +128,8 @@ const authenticate111 = async () => {
     return;
   } else {
     await authenticate();
-    router.push('/dashboard')
+    login();
+  
   }
 };
 

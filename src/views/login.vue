@@ -134,6 +134,7 @@ const loginButton = () => {
     .catch((err) => {
       console.log(err);
     });
+    
 };
 
 // onBeforeRouteLeave((to) => {
