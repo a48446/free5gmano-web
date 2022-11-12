@@ -1,7 +1,9 @@
-from typing import Dict
+import os
+import uuid
 import json
-
-from flask import Flask, render_template, request
+import base64
+from typing import Dict
+from flask import Flask, render_template, request, Response
 from webauthn import (
     generate_registration_options,
     verify_registration_response,
@@ -17,101 +19,93 @@ from webauthn.helpers.structs import (
 )
 from webauthn.helpers.cose import COSEAlgorithmIdentifier
 
-from .models import Credential, UserAccount
-
-
-# Create our Flask app
 app = Flask(__name__)
 
-################
-#
-# RP Configuration
-#
-################
+# rp_id = "zero-trust-test.nutc-imac.com"
+# origin = "https://zero-trust-test.nutc-imac.com"
 
 rp_id = "localhost"
-origin = "http://localhost:5000"
-rp_name = "Sample RP"
-user_id = "some_random_user_identifier_like_a_uuid"
-username = f"your.name@{rp_id}"
-print(f"User ID: {user_id}")
-print(f"Username: {username}")
+origin = "http://localhost"
+rp_name = "ubuntu"
 
-# A simple way to persist credentials by user ID
-in_memory_db: Dict[str, UserAccount] = {}
 
-# Register our sample user
-in_memory_db[user_id] = UserAccount(
-    id=user_id,
-    username=username,
-    credentials=[],
-)
-
-# Passwordless assumes you're able to identify the user before performing registration or
-# authentication
-logged_in_user_id = user_id
-
-# A simple way to persist challenges until response verification
 current_registration_challenge = None
 current_authentication_challenge = None
 
 
-################
-#
-# Views
-#
-################
+class person_control(object):
+    @app.route("/account", methods=["POST"])
+    def add_id():
+        global user_id
+        global logged_in_user_id
+
+        user_data = request.get_data()
+        user = json.loads(user_data.decode("utf-8"))
+        user_id = user["account"]
+        username = f"{user_id}@{rp_id}"
+        logged_in_user_id = user_id
+
+        user_tmp_data = {"id": user_id, "username": username, "credentials": []}
+
+        user_data = {
+            user_id : user_tmp_data
+        }
+
+        with open("database.json", "w") as f:
+            f.write(json.dumps(user_data))
+
+        status = {"status": "user add success"}
+
+        print(status)
+
+        return status
 
 
 @app.route("/")
 def index():
+    username = "012345"
     context = {
         "username": username,
     }
+
     return render_template("index.html", **context)
 
 
-################
-#
-# Registration
-#
-################
-
-
 @app.route("/generate-registration-options", methods=["GET"])
-def handler_generate_registration_options():
+def registerFidoOptions():
     global current_registration_challenge
     global logged_in_user_id
 
-    user = in_memory_db[logged_in_user_id]
-
+    with open("database.json", "r") as f:
+        user = json.load(f)[user_id]
+    
     options = generate_registration_options(
         rp_id=rp_id,
         rp_name=rp_name,
-        user_id=user.id,
-        user_name=user.username,
+        user_id=user["id"],
+        user_name=user["username"],
         exclude_credentials=[
             {"id": cred.id, "transports": cred.transports, "type": "public-key"}
-            for cred in user.credentials
+            for cred in user["credentials"]
         ],
         authenticator_selection=AuthenticatorSelectionCriteria(
             user_verification=UserVerificationRequirement.REQUIRED
         ),
-        supported_pub_key_algs=[
-            COSEAlgorithmIdentifier.ECDSA_SHA_256,
-            COSEAlgorithmIdentifier.RSASSA_PKCS1_v1_5_SHA_256,
-        ],
+        supported_pub_key_algs=[COSEAlgorithmIdentifier.ECDSA_SHA_256],
     )
-
+    
     current_registration_challenge = options.challenge
-
+    
     return options_to_json(options)
 
 
+# verify-registration-response
+# @app.route("/registerOptionResponse", methods=["POST"])
 @app.route("/verify-registration-response", methods=["POST"])
-def handler_verify_registration_response():
+def registerOptionResponse():
     global current_registration_challenge
     global logged_in_user_id
+    global verification
 
     body = request.get_data()
 
@@ -123,48 +117,51 @@ def handler_verify_registration_response():
             expected_rp_id=rp_id,
             expected_origin=origin,
         )
+       
     except Exception as err:
+        print(err)
         return {"verified": False, "msg": str(err), "status": 400}
 
-    user = in_memory_db[logged_in_user_id]
+    with open("database.json", "r") as f:
+        user = json.load(f)[user_id]
+    
+    credential_data = {
+        "id":str(verification.credential_id).replace("b'","").replace("'",""),
+        "public_key":str(verification.credential_public_key).replace("b'","").replace("'",""),
+        "sign_count":verification.sign_count,
+        "transports":json.loads(body).get("transports", [])
+    }
+    
+    user["credentials"] = [credential_data]
+    
+    with open("database.json", "w") as f:
+            f.write(json.dumps(user))
 
-    new_credential = Credential(
-        id=verification.credential_id,
-        public_key=verification.credential_public_key,
-        sign_count=verification.sign_count,
-        transports=json.loads(body).get("transports", []),
-    )
-
-    user.credentials.append(new_credential)
-
-    return {"verified": True}
-
-
-################
-#
-# Authentication
-#
-################
+    return {"verified": True, "username": user}
 
 
+# @app.route("/sigInOptionRequest", methods=["GET"])
 @app.route("/generate-authentication-options", methods=["GET"])
-def handler_generate_authentication_options():
+def sigInOptionRequest():
     global current_authentication_challenge
     global logged_in_user_id
 
-    user = in_memory_db[logged_in_user_id]
+    with open("database.json", "r") as f:
+        user = json.load(f)    
+
+    signin_user =  user["credentials"][0]
+    user_id = str.encode(signin_user["id"])
+    user_id = user_id.decode('unicode-escape').encode('latin-1')
 
     options = generate_authentication_options(
         rp_id=rp_id,
         allow_credentials=[
-            {"type": "public-key", "id": cred.id, "transports": cred.transports}
-            for cred in user.credentials
+            {"type": "public-key", "id": user_id, "transports": signin_user["transports"]}
         ],
         user_verification=UserVerificationRequirement.REQUIRED,
     )
-
+    
     current_authentication_challenge = options.challenge
-
     return options_to_json(options)
 
 
@@ -176,32 +173,44 @@ def hander_verify_authentication_response():
     body = request.get_data()
 
     try:
+
         credential = AuthenticationCredential.parse_raw(body)
 
-        # Find the user's corresponding public key
-        user = in_memory_db[logged_in_user_id]
-        user_credential = None
-        for _cred in user.credentials:
-            if _cred.id == credential.raw_id:
-                user_credential = _cred
+        with open("database.json", "r") as f:
+            user = json.load(f)
 
-        if user_credential is None:
-            raise Exception("Could not find corresponding public key in DB")
+        signin_user =  user["credentials"][0]
+        
+        # user_credential = None
 
-        # Verify the assertion
-        verification = verify_authentication_response(
+        # for _cred in user.credentials:
+        #     if _cred.id == credential.raw_id:
+        #         print("hello")
+        #         user_credential = _cred
+
+        # if user_credential is None:
+        #     raise Exception("Could not find corresponding public key in DB")
+
+        login_verification = verify_authentication_response(
             credential=credential,
             expected_challenge=current_authentication_challenge,
             expected_rp_id=rp_id,
             expected_origin=origin,
-            credential_public_key=user_credential.public_key,
-            credential_current_sign_count=user_credential.sign_count,
+            credential_public_key= verification.credential_public_key,
+            credential_current_sign_count=signin_user["sign_count"],
             require_user_verification=True,
         )
+
     except Exception as err:
+        print(err)
+
         return {"verified": False, "msg": str(err), "status": 400}
 
-    # Update our credential's sign count to what the authenticator says it is now
-    user_credential.sign_count = verification.new_sign_count
 
-    return {"verified": True}
+    default = {
+        "status": "login",
+        "verified": True,
+        "user_credential.sign_count": login_verification.new_sign_count,
+    }
+
+    return default

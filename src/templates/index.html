@@ -5,47 +5,93 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="static/simplewebauthn-browser.4.1.0.umd.min.js"></script>
+    <script src="../static/bootstrap-5.2.2-dist/js/bootstrap.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="../static/bootstrap-5.2.2-dist/css/bootstrap.min.css"
+    />
     <link rel="stylesheet" href="static/style.css" />
-    <title>Going Passwordless with py_webauthn (Sample RP)</title>
   </head>
+
   <body>
-    <div class="container">
-      <header>
-        <h1>Going Passwordless with py_webauthn (Sample Code)</h1>
-        <div class="form-container">
-          <h2>Username:</h2>
-          <input
-            type="text"
-            name="username"
-            id="username"
-            value="{{ username }}"
-            disabled
-          />
-          <button id="btnRegister">Register</button>
-          <button id="btnAuthenticate">Authenticate</button>
+    <div class="container-fluid container-custom">
+      <div class="dropdown position-fixed cursor-pointer top-0 end-0 mt-3 me-4">
+        <a
+          class="dropdown-toggle text-decoration-none text-black user-select-none"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+          >TW</a
+        >
+        <ul
+          class="dropdown-menu dropdown-menu-end dropdown-custom"
+          aria-labelledby="dropdownMenu"
+        >
+          <li><a class="dropdown-item" href="#">TW</a></li>
+          <li><hr class="dropdown-divider my-0" /></li>
+          <li><a class="dropdown-item" href="#">EN</a></li>
+        </ul>
+      </div>
+      <div class="d-flex flex-column">
+        <div class="text-center mb-4 mt-4">
+          <img
+            class="login_icon"
+            src="../static/img/free5gmano_icon.ico"
+            alt="free5gmano_icon"
+          />`
+          <h2 class="login_title">
+            Free5g Mano， Lorem ipsum dolor sit consectetur.
+          </h2>
         </div>
-      </header>
-      <main>
-        <h2></h2>
-        <details>
-          <summary>Debug Info</summary>
-          <!-- Registration -->
+        <div
+          class="form-custom bg-white shadow rounded text-center mt-4 mx-auto p-3"
+        >
+          <input
+            id="username"
+            class="form-control form-control-lg mb-3"
+            type="text"
+            placeholder="帳號"
+          />
+
+          <div
+            v-if="login_validate"
+            class="col-12 d-flex align-items-center mb-2"
+            :class="{ 'd-none': !login_validate }"
+          >
+            <i class="bi bi-exclamation-circle-fill text-danger"></i>
+            <!-- <small class="text-danger ms-2">{{ msg }}</small> -->
+            <!-- <small class="text-danger ms-2">您的帳號尚未授權</small> -->
+          </div>
+
+          <!-- <h3>註冊登記</h3>
+          <p>狀態: <span id="statusRegister"></span></p>
+          <h4>output:</h4>
+          <textarea id="dbgRegister" spellcheck="false"></textarea>
+  
+          <div class="hr_custom"></div>
+  
           <section>
-            <h3>Registration</h3>
-            <p>Status: <span id="statusRegister"></span></p>
-            <h4>Raw Output:</h4>
-            <textarea id="dbgRegister" spellcheck="false"></textarea>
-          </section>
-          <!-- Authentication -->
-          <section>
-            <h3>Authentication</h3>
-            <p>Status: <span id="statusAuthenticate"></span></p>
-            <h4>Raw Output:</h4>
+            <h3>驗證</h3>
+            <p>狀態: <span id="statusAuthenticate"></span></p>
+            <h4>output:</h4>
             <textarea id="dbgAuthenticate" spellcheck="false"></textarea>
           </section>
-        </details>
-        <div class="debug-container"></div>
-      </main>
+          <div class="debug-container"></div> -->
+
+          <button
+            class="w-100 btn btn-primary btn-lg text-white mb-3"
+            id="btnAuthenticate"
+          >
+            登入驗證
+          </button>
+          <button
+            class="w-100 btn btn-primary btn-lg text-white mb-3"
+            id="btnRegister"
+          >
+            註冊
+          </button>
+          <div class="hr_custom"></div>
+        </div>
+      </div>
     </div>
 
     <script src="static/script.js"></script>
